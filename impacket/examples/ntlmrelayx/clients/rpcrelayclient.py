@@ -19,10 +19,10 @@ from impacket.nt_errors import STATUS_SUCCESS, STATUS_ACCESS_DENIED
 from impacket.ntlm import NTLMAuthChallenge
 from impacket.spnego import SPNEGO_NegTokenResp
 
-from impacket.dcerpc.v5 import transport, rpcrt, epm, tsch
+from impacket.dcerpc.v5 import transport, rpcrt, epm, tsch, icpr
 from impacket.dcerpc.v5.ndr import NDRCALL
 from impacket.dcerpc.v5.rpcrt import DCERPC_v5, MSRPCBind, CtxItem, MSRPCHeader, SEC_TRAILER, MSRPCBindAck, \
-    MSRPCRespHeader, MSRPCBindNak, DCERPCException, RPC_C_AUTHN_WINNT, RPC_C_AUTHN_LEVEL_CONNECT, \
+    MSRPCRespHeader, MSRPCBindNak, DCERPCException, RPC_C_AUTHN_WINNT, RPC_C_AUTHN_LEVEL_CONNECT, RPC_C_AUTHN_LEVEL_PKT_PRIVACY, \
     rpc_status_codes, rpc_provider_reason
 
 PROTOCOL_CLIENT_CLASS = "RPCRelayClient"
@@ -130,12 +130,18 @@ class RPCRelayClient(ProtocolClient):
 
         if self.endpoint == "TSCH":
             self.endpoint_uuid = tsch.MSRPC_UUID_TSCHS
+            self.auth_level = RPC_C_AUTHN_LEVEL_CONNECT
+        elif self.endpoint == "ICPR":
+            self.endpoint_uuid = icpr.MSRPC_UUID_ICPR
+            self.auth_level = RPC_C_AUTHN_LEVEL_PKT_PRIVACY
         else:
             raise NotImplementedError("Not implemented!")
 
         if self.serverConfig.rpc_use_smb:
             if self.endpoint == "TSCH":
                 self.stringbinding = "ncacn_np:%s[\\pipe\\atsvc]" % target.netloc
+            elif self.endpoint == "ICPR":
+                self.stringbinding = "ncacn_np:%s[\\pipe\\cert]" % target.netloc
             else:
                 raise NotImplementedError("Not implemented!")
         else:
@@ -154,7 +160,7 @@ class RPCRelayClient(ProtocolClient):
             rpctransport.set_dport(self.serverConfig.rpc_smb_port)
 
         self.session = MYDCERPC_v5(rpctransport)
-        self.session.set_auth_level(RPC_C_AUTHN_LEVEL_CONNECT)
+        self.session.set_auth_level(self.auth_level)
         self.session.connect()
 
         if self.serverConfig.rpc_use_smb:
