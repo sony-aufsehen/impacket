@@ -5,7 +5,6 @@ from impacket.dcerpc.v5.ndr import NDRCALL, NDRSTRUCT
 from impacket.dcerpc.v5.rpcrt import DCERPCException, DCERPC_v5
 from impacket import hresult_errors, system_errors
 from impacket.uuid import uuidtup_to_bin
-from cryptography import x509
 
 MSRPC_UUID_ICPR  = uuidtup_to_bin(("91ae6020-9e3c-11cf-8d7c-00aa00c091be", "0.0"))
 
@@ -79,9 +78,6 @@ def checkNullString(string):
         return string + '\x00'
     else:
         return string
-
-def csr_to_der(csr: x509.CertificateSigningRequest) -> bytes:
-    return csr.public_bytes(Encoding.DER)
 
 def hIcprRpcCertServerRequest(dce: DCERPC_v5 = None, request_id: int = 0, der: bytes = None, ca: str = None) -> NoReturn: 
     """
