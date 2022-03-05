@@ -111,7 +111,6 @@ class SMBRelayServer(Thread):
         self.origsmb2TreeConnect = self.server.hookSmb2Command(smb3.SMB2_TREE_CONNECT, self.smb2TreeConnect)
         # Let's use the SMBServer Connection dictionary to keep track of our client connections as well
         #TODO: See if this is the best way to accomplish this
-
         # changed to dereference configuration interfaceIp
         self.server.addConnection('SMBRelay', config.interfaceIp, 445)
 
@@ -422,19 +421,15 @@ class SMBRelayServer(Thread):
         # It will loop until all targets are processed for this user
         errorCode = STATUS_NETWORK_SESSION_EXPIRED
 
-
         respPacket['Status'] = errorCode
         respSMBCommand['Capabilities'] = 0
         respSMBCommand['MaximalAccess'] = 0x000f01ff
 
         respPacket['Data'] = respSMBCommand
-
         # Sign the packet if needed
         if connData['SignatureEnabled']:
             smbServer.signSMBv2(respPacket, connData['SigningSessionKey'])
-
         smbServer.setConnectionData(connId, connData)
-
         return None, [respPacket], errorCode
 
     ################################################################################

@@ -8,7 +8,6 @@ from impacket.uuid import uuidtup_to_bin
 
 MSRPC_UUID_ICPR  = uuidtup_to_bin(("91ae6020-9e3c-11cf-8d7c-00aa00c091be", "0.0"))
 
-
 class DCERPCSessionError(DCERPCException):
     def __init__(self, error_string=None, error_code=None, packet=None):
         DCERPCException.__init__(self, error_string, error_code, packet)
@@ -79,7 +78,7 @@ def checkNullString(string):
     else:
         return string
 
-def hIcprRpcCertServerRequest(dce: DCERPC_v5 = None, request_id: int = 0, der: bytes = None, ca: str = None) -> NoReturn: 
+def hIcprRpcCertServerRequest(dce: DCERPC_v5 = None, request_id: int = 0, der: bytes = None, ca: str = None, attributes: 'list[str]' = None) -> NoReturn: 
     """
     If request_id is different than 0, the request will download an existing certificate for this request_id
     Otherwise, will do a classic CSR
@@ -98,11 +97,11 @@ def hIcprRpcCertServerRequest(dce: DCERPC_v5 = None, request_id: int = 0, der: b
         icprRpcCertServerRequest["pctbAttribs"] = pctb_request
         icprRpcCertServerRequest["pctbRequest"] = pctb_request
 
-    else: 
-        attributes = checkNullString("\n".join(attributes)).encode("utf-16le")
+    else:
+        attribs = checkNullString("\n".join(attributes)).encode("utf-16le")
         pctb_attribs = CERTTRANSBLOB()
-        pctb_attribs["cb"] = len(attributes)
-        pctb_attribs["pb"] = attributes
+        pctb_attribs["cb"] = len(attribs)
+        pctb_attribs["pb"] = attribs
 
         pctb_request = CERTTRANSBLOB()
         pctb_request["cb"] = len(der)

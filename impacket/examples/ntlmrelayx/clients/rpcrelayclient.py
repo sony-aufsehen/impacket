@@ -133,6 +133,7 @@ class RPCRelayClient(ProtocolClient):
             self.auth_level = RPC_C_AUTHN_LEVEL_CONNECT
         elif self.endpoint == "ICPR":
             self.endpoint_uuid = icpr.MSRPC_UUID_ICPR
+            # self.auth_level = RPC_C_AUTHN_LEVEL_CONNECT
             self.auth_level = RPC_C_AUTHN_LEVEL_PKT_PRIVACY
         else:
             raise NotImplementedError("Not implemented!")

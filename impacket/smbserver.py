@@ -4261,7 +4261,6 @@ class SMBSERVER(socketserver.ThreadingMixIn, socketserver.TCPServer):
             originalCommand = self.__smb2Commands[smb2Command]
         else:
             originalCommand = None
-
         self.__smb2Commands[smb2Command] = callback
         return originalCommand
 
